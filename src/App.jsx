@@ -1,317 +1,398 @@
 import { useEffect, useState } from 'react'
 
 const accounts = [
-  { name: 'Zichtrekening', iban: 'BE•• 1234 5678 9012', balance: '€ 12.480,32', change: '+€ 320,40' },
-  { name: 'Spaarrekening', iban: 'BE•• 2234 5678 9012', balance: '€ 58.120,11', change: '+€ 1.120,00' },
-  { name: 'Beleggingsportefeuille', iban: 'BE•• 3234 5678 9012', balance: '€ 24.860,50', change: '+2,8%' },
+  {
+    id: 'zicht',
+    name: 'DOE JOHN',
+    label: 'Zichtrekening',
+    balance: '2.605,73 EUR',
+    icon: 'wallet',
+  },
+  {
+    id: 'spaar',
+    name: 'DOE JOHN',
+    label: 'Spaarrekening',
+    balance: '20,05 EUR',
+    icon: 'piggy',
+  },
+  {
+    id: 'visa',
+    name: 'DOE JOHN',
+    label: 'Visa Debit',
+    balance: 'Limiet · 2.500 EUR',
+    icon: 'card',
+  },
 ]
 
-const transactions = [
-  { title: 'SEPA overschrijving naar J. Peeters', time: 'Vandaag · 09:41', amount: '-€ 240,00', status: 'Verwerkt' },
-  { title: 'Loonstorting werkgever', time: 'Gisteren · 17:12', amount: '+€ 3.250,00', status: 'Binnen' },
-  { title: 'QR-betaling supermarkt', time: 'Gisteren · 13:05', amount: '-€ 42,18', status: 'Voltooid' },
-  { title: 'Rentebijschrijving spaarrekening', time: 'Ma  · 08:00', amount: '+€ 18,24', status: 'Automatisch' },
+const quickPay = [
+  { id: 1, label: 'JP', name: 'J. Peeters', tone: 'initials' },
+  { id: 2, label: 'wallet', name: 'Zicht', tone: 'icon' },
+  { id: 3, label: 'SM', name: 'S. Maes', tone: 'initials' },
+  { id: 4, label: 'wallet', name: 'Spaar', tone: 'icon' },
+  { id: 5, label: 'AL', name: 'A. Lenaerts', tone: 'initials' },
 ]
 
-const shortcuts = [
-  'Subscriptie Manager',
-  'Directe overschrijving',
-  'QR-code betalen',
-  'Nieuwe overschrijving',
-  'Kaart blokkeren',
+const primaryActions = [
+  { id: 'receive', label: 'Geld ontvangen', tone: 'navy', icon: 'receive' },
+  { id: 'scan', label: 'Code scannen', tone: 'navy', icon: 'qr' },
+  { id: 'transfer', label: 'Overschrijven', tone: 'cyan', icon: 'transfer' },
 ]
 
-const weeklySpending = [
-  { day: 'Ma', value: 42 },
-  { day: 'Di', value: 58 },
-  { day: 'Wo', value: 34 },
-  { day: 'Do', value: 71 },
-  { day: 'Vr', value: 89 },
-  { day: 'Za', value: 63 },
-  { day: 'Zo', value: 28 },
+const SUBSCRIPTION_PATH = '/subscription-manager'
+
+const menuActions = [
+  { id: 'invoice', label: 'Factuur betalen', badge: 'Nieuw', icon: 'invoice' },
+  { id: 'subs', label: 'Subscriptie Manager', icon: 'subs', href: SUBSCRIPTION_PATH },
+  { id: 'standing', label: 'Doorlopende opdrachten', icon: 'repeat' },
+  { id: 'cards', label: 'Kaarten beheren', icon: 'cards' },
+  { id: 'docs', label: 'Documenten', icon: 'docs' },
 ]
 
-const alerts = [
-  'Document ter ondertekening: hypothecair bijvoegsel',
-  'Nieuwe veilige melding in Kate',
-  'Afsprakenslot beschikbaar bij KBC Live',
-]
-
-function Icon({ children }) {
-  return <span className="icon">{children}</span>
+function getPageFromLocation() {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/'
+  if (path === SUBSCRIPTION_PATH || window.location.hash === '#dashboard') {
+    return 'subscriptions'
+  }
+  return 'home'
 }
 
-function EmptyDashboardPage({ onBack }) {
+function goTo(path) {
+  window.history.pushState({}, '', path)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+function handleInternalNav(event, path) {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+    return
+  }
+  event.preventDefault()
+  goTo(path)
+}
+
+function KbcLogo() {
+  return (
+    <svg className="kbcLogo" viewBox="0 0 62 22" role="img" aria-label="KBC">
+      <text
+        x="0"
+        y="18"
+        fill="currentColor"
+        fontFamily="'Source Sans 3', 'Segoe UI', sans-serif"
+        fontWeight="800"
+        fontSize="20"
+        letterSpacing="-0.6"
+      >
+        KBC
+      </text>
+    </svg>
+  )
+}
+
+function SvgIcon({ name }) {
+  const common = {
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.7,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  }
+
+  switch (name) {
+    case 'settings':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M10.2 3.8h3.6l.4 2.1a6.8 6.8 0 0 1 1.7 1l2-1 1.8 1.8-1 2a6.8 6.8 0 0 1 1 1.7l2.1.4v3.6l-2.1.4a6.8 6.8 0 0 1-1 1.7l1 2-1.8 1.8-2-1a6.8 6.8 0 0 1-1.7 1l-.4 2.1h-3.6l-.4-2.1a6.8 6.8 0 0 1-1.7-1l-2 1-1.8-1.8 1-2a6.8 6.8 0 0 1-1-1.7l-2.1-.4v-3.6l2.1-.4a6.8 6.8 0 0 1 1-1.7l-1-2 1.8-1.8 2 1a6.8 6.8 0 0 1 1.7-1l.4-2.1Z"
+            {...common}
+          />
+          <circle cx="12" cy="12" r="2.8" {...common} />
+        </svg>
+      )
+    case 'bell':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6.5 9.5a5.5 5.5 0 0 1 11 0c0 4.2 1.5 5.5 1.5 5.5H5s1.5-1.3 1.5-5.5Z" {...common} />
+          <path d="M10 18.5a2 2 0 0 0 4 0" {...common} />
+        </svg>
+      )
+    case 'search':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="6.5" {...common} />
+          <path d="M16.2 16.2 20 20" {...common} />
+        </svg>
+      )
+    case 'edit':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 20h4.2L19 9.2 14.8 5 4 15.8V20Z" {...common} />
+          <path d="M12.8 6.9 17.1 11.2" {...common} />
+        </svg>
+      )
+    case 'wallet':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3.5" y="6.5" width="17" height="12" rx="2.5" {...common} />
+          <path d="M3.5 10h17" {...common} />
+          <circle cx="16.2" cy="14.2" r="1.1" fill="currentColor" stroke="none" />
+        </svg>
+      )
+    case 'piggy':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16.5 9.2c.8-.2 1.5-.8 1.8-1.6.2.9.9 1.6 1.8 1.8-.8.3-1.4.9-1.6 1.7" {...common} />
+          <path d="M5.5 11.5c0-3.2 2.8-5.5 6.5-5.5 3 0 5.5 1.5 6.3 3.7.8.2 1.4.9 1.4 1.8v1.3c0 1.2-.9 2.2-2.1 2.4l-.8 2.8H13l-.7-2h-1.6l-.7 2H7.7l-.8-2.8A2.4 2.4 0 0 1 5 12.8v-.4c0-.3.2-.6.5-.9Z" {...common} />
+          <circle cx="9.2" cy="11.2" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+      )
+    case 'card':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3.5" y="6" width="17" height="12" rx="2.2" {...common} />
+          <path d="M3.5 10h17M7 14.5h4" {...common} />
+        </svg>
+      )
+    case 'chat':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 6.5h14a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H10l-4 3v-3H5A1.5 1.5 0 0 1 3.5 15V8A1.5 1.5 0 0 1 5 6.5Z" {...common} />
+        </svg>
+      )
+    case 'chevron':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m9 6 6 6-6 6" {...common} />
+        </svg>
+      )
+    case 'receive':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="7" y="3.5" width="10" height="17" rx="2.2" {...common} />
+          <path d="M12 9v5.5M9.8 12.3 12 14.5l2.2-2.2" {...common} />
+        </svg>
+      )
+    case 'qr':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 5h5v5H5V5Zm9 0h5v5h-5V5ZM5 14h5v5H5v-5Zm9 2.5h2V19h-2v-2.5Zm3.5 0H19V19h-1.5v-2.5ZM14 14h2.2v2.2H14V14Zm3.8 0H19v2.2h-1.2V14Z" {...common} />
+        </svg>
+      )
+    case 'transfer':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="6.5" y="3.5" width="11" height="17" rx="2.2" {...common} />
+          <path d="M12 8.5v6M14.3 12.2 12 14.5l-2.3-2.3" {...common} />
+        </svg>
+      )
+    case 'invoice':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 3.5h7.5L19 8v12.5H7V3.5Z" {...common} />
+          <path d="M14.5 3.5V8H19M9.5 12h5M9.5 15.5h5" {...common} />
+        </svg>
+      )
+    case 'subs':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="5" width="16" height="14" rx="2.2" {...common} />
+          <path d="M8 9.5h8M8 13h5" {...common} />
+        </svg>
+      )
+    case 'repeat':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M17 7H8.5A3.5 3.5 0 0 0 5 10.5V12" {...common} />
+          <path d="m14.5 4.5 2.5 2.5-2.5 2.5" {...common} />
+          <path d="M7 17h8.5A3.5 3.5 0 0 0 19 13.5V12" {...common} />
+          <path d="m9.5 19.5-2.5-2.5 2.5-2.5" {...common} />
+        </svg>
+      )
+    case 'cards':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="7" width="14" height="10" rx="2" {...common} />
+          <path d="M6 5.5h12.5A1.5 1.5 0 0 1 20 7v8" {...common} />
+        </svg>
+      )
+    case 'docs':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 4.5h6l4 4V19a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 19V6A1.5 1.5 0 0 1 8 4.5Z" {...common} />
+          <path d="M14 4.5V9h4.5M9.5 13h5M9.5 16h3.5" {...common} />
+        </svg>
+      )
+    default:
+      return null
+  }
+}
+
+function KbcHeader() {
+  return (
+    <header className="kbcHeader">
+      <a className="logoLink" href="/" onClick={(event) => handleInternalNav(event, '/')}>
+        <KbcLogo />
+      </a>
+      <div className="headerIcons">
+        <button className="iconBtn" type="button" aria-label="Instellingen">
+          <SvgIcon name="settings" />
+        </button>
+        <button className="iconBtn" type="button" aria-label="Meldingen">
+          <SvgIcon name="bell" />
+          <span className="notifDot" />
+        </button>
+      </div>
+
+      <div className="kateSearch">
+        <SvgIcon name="search" />
+        <input placeholder="Hoe kan ik je helpen?" aria-label="Zoeken met Kate" />
+        <strong className="kateMark">Kate</strong>
+      </div>
+    </header>
+  )
+}
+
+function SubscriptionManagerPage() {
   return (
     <div className="shell">
-      <header className="topbar">
-        <div className="brandWrap">
-          <div className="logoMark">KBC</div>
-          <div>
-            <div className="brandTitle">Subscriptie Manager</div>
-            <div className="brandSub">Dashboard-pagina</div>
-          </div>
-        </div>
+      <div className="appFrame">
+        <KbcHeader />
 
-        <div className="topActions singleAction">
-          <button className="secondaryButton" type="button" onClick={onBack}>
-            Terug naar overzicht
-          </button>
-        </div>
-      </header>
-
-      <main className="emptyPage">
-        <div className="emptyState panel">
-          <p className="eyebrow">Subscriptie Manager</p>
-          <h1>Lege pagina</h1>
-          <p>Hier kan later de nieuwe Subscriptie Manager-flow of feature worden toegevoegd.</p>
-        </div>
-      </main>
+        <main className="kbcMain kbcMain--empty">
+          <section className="emptyFeature emptyFeature--blank">
+            <a className="backText" href="/" onClick={(event) => handleInternalNav(event, '/')}>
+              <SvgIcon name="chevron" />
+              Terug
+            </a>
+            <h1 className="sectionTitle">Subscriptie Manager</h1>
+          </section>
+        </main>
+      </div>
     </div>
   )
 }
 
 function App() {
-  const [page, setPage] = useState(() => (window.location.hash === '#dashboard' ? 'dashboard' : 'home'))
+  const [page, setPage] = useState(getPageFromLocation)
 
   useEffect(() => {
-    const onHashChange = () => {
-      setPage(window.location.hash === '#dashboard' ? 'dashboard' : 'home')
+    const sync = () => setPage(getPageFromLocation())
+    window.addEventListener('popstate', sync)
+    window.addEventListener('hashchange', sync)
+    return () => {
+      window.removeEventListener('popstate', sync)
+      window.removeEventListener('hashchange', sync)
     }
-
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  if (page === 'dashboard') {
-    return <EmptyDashboardPage onBack={() => { window.location.hash = '' }} />
+  if (page === 'subscriptions') {
+    return <SubscriptionManagerPage />
   }
 
   return (
     <div className="shell">
-      <header className="topbar">
-        <div className="brandWrap">
-          <div className="logoMark">KBC</div>
-          <div>
-            <div className="brandTitle">KBC Touch</div>
-            <div className="brandSub">Persoonlijk digitaal bankieren</div>
-          </div>
-        </div>
+      <div className="appFrame">
+        <KbcHeader />
 
-        <nav className="primaryTabs" aria-label="Primaire navigatie">
-          {['Betalen', 'Sparen & Beleggen', 'Lenen', 'Verzekeren'].map((tab, index) => (
-            <a key={tab} className={index === 0 ? 'tab active' : 'tab'} href="#">
-              {tab}
-            </a>
-          ))}
-        </nav>
+        <main className="kbcMain">
+          <section className="accountsRail" aria-label="Rekeningen">
+            {accounts.map((account) => (
+              <article className="accountCard" key={account.id}>
+                <div className="accountCardTop">
+                  <span className="accountTypeIcon">
+                    <SvgIcon name={account.icon} />
+                  </span>
+                  <button className="editBtn" type="button" aria-label={`${account.label} bewerken`}>
+                    <SvgIcon name="edit" />
+                  </button>
+                </div>
+                <div className="accountCardBody">
+                  <span className="accountName">{account.name}</span>
+                  <strong className="accountBalance">{account.balance}</strong>
+                </div>
+              </article>
+            ))}
+          </section>
 
-        <div className="topActions">
-          <label className="searchBar" aria-label="Zoeken">
-            <span>⌕</span>
-            <input placeholder="Zoek transacties, documenten of rekeningen" />
-          </label>
-          <button className="ghostButton" type="button">
-            <Icon>🔔</Icon>
-            <span className="badgeDot" />
-          </button>
-          <button className="profileButton" type="button">
-            <span className="avatar">MA</span>
-            <span className="profileText">
-              <strong>Maria</strong>
-              <small>Privé</small>
+          <a className="securityBanner" href="#">
+            <span className="securityIcon">
+              <SvgIcon name="chat" />
             </span>
-          </button>
-        </div>
-      </header>
+            <span>Check of je met KBC spreekt.</span>
+            <span className="bannerChevron">
+              <SvgIcon name="chevron" />
+            </span>
+          </a>
 
-      <main className="dashboard">
-        <section className="heroGrid">
-          <article className="balanceCard panel accent">
-            <div className="panelHeader">
-              <div>
-                <p className="eyebrow">Hoofdoverzicht</p>
-                <h1>Goedemiddag, Maria</h1>
-              </div>
-              <div className="timeChip">Realtime synchronisatie</div>
-            </div>
+          <section className="bottomSheet" aria-label="Acties">
+            <div className="sheetHandle" />
 
-            <div className="bigBalance">
-              <span>Totaal beschikbaar vermogen</span>
-              <strong>€ 95.460,93</strong>
-              <p>Inclusief zicht-, spaar- en beleggingsrekeningen</p>
-            </div>
-
-            <div className="summaryPills">
-              <div>
-                <span>Inkomend</span>
-                <strong>+€ 4.588,64</strong>
-              </div>
-              <div>
-                <span>Uitgaand</span>
-                <strong>-€ 1.204,18</strong>
-              </div>
-              <div>
-                <span>Valuta</span>
-                <strong>EUR</strong>
-              </div>
-            </div>
-          </article>
-
-          <article className="quickActions panel">
-            <div className="panelHeader compact">
-              <div>
-                <p className="eyebrow">Snelle acties</p>
-                <h2>Handelingen in 1 klik</h2>
-              </div>
-            </div>
-            <div className="actionGrid">
-              {shortcuts.map((item) => (
-                <a
-                  key={item}
-                  className="actionCard"
-                  href={item === 'Subscriptie Manager' ? '#dashboard' : '#'}
-                >
-                  <span className="actionIcon">↗</span>
-                  <span>{item}</span>
-                </a>
-              ))}
-            </div>
-          </article>
-
-          <article className="panel analyticsPanel">
-            <div className="panelHeader compact">
-              <div>
-                <p className="eyebrow">Uitgavenanalyse</p>
-                <h2>Weekoverzicht</h2>
-              </div>
-              <button className="textButton" type="button">Details</button>
-            </div>
-
-            <div className="chartWrap" aria-label="Wekelijkse uitgaven grafiek">
-              {weeklySpending.map((item) => (
-                <div className="chartBarGroup" key={item.day}>
-                  <div className="chartValue">{item.value}%</div>
-                  <div className="chartTrack">
-                    <div className="chartFill" style={{ height: `${item.value}%` }} />
-                  </div>
-                  <span>{item.day}</span>
-                </div>
-              ))}
-            </div>
-          </article>
-        </section>
-
-        <section className="contentGrid">
-          <div className="mainColumn">
-            <article className="panel accountsPanel">
-              <div className="panelHeader">
-                <div>
-                  <p className="eyebrow">Rekeningoverzicht</p>
-                  <h2>Rekeningen en portfolio</h2>
-                </div>
-                <button className="textButton" type="button">Alles bekijken</button>
-              </div>
-
-              <div className="accountsList">
-                {accounts.map((account) => (
-                  <div className="accountRow" key={account.name}>
-                    <div className="accountMeta">
-                      <div className="accountIcon">●</div>
-                      <div>
-                        <strong>{account.name}</strong>
-                        <p>{account.iban}</p>
-                      </div>
-                    </div>
-                    <div className="accountValue">
-                      <strong>{account.balance}</strong>
-                      <span>{account.change}</span>
-                    </div>
-                  </div>
+            <div className="sheetBlock">
+              <h2 className="sectionTitle">Snel betalen</h2>
+              <div className="quickPayRow">
+                {quickPay.map((person) => (
+                  <button className="quickPayItem" type="button" key={person.id}>
+                    <span className={`quickAvatar ${person.tone}`}>
+                      {person.tone === 'icon' ? <SvgIcon name="wallet" /> : person.label}
+                    </span>
+                    <small>{person.name}</small>
+                  </button>
                 ))}
               </div>
-            </article>
+            </div>
 
-            <article className="panel transactionsPanel">
-              <div className="panelHeader">
-                <div>
-                  <p className="eyebrow">Recente transacties</p>
-                  <h2>Laatste bewegingen</h2>
-                </div>
-                <div className="statusLegend">
-                  <span className="statusDot green" /> Verwerkt
-                  <span className="statusDot blue" /> In afwachting
-                </div>
-              </div>
-
-              <div className="transactionList">
-                {transactions.map((tx) => (
-                  <div className="transactionRow" key={tx.title}>
-                    <div>
-                      <strong>{tx.title}</strong>
-                      <p>{tx.time}</p>
-                    </div>
-                    <div className="transactionRight">
-                      <strong>{tx.amount}</strong>
-                      <span>{tx.status}</span>
-                    </div>
-                  </div>
+            <div className="sheetBlock">
+              <h2 className="sectionTitle">Alle acties</h2>
+              <div className="primaryActions">
+                {primaryActions.map((action) => (
+                  <button className="primaryAction" type="button" key={action.id}>
+                    <span className={`actionCircle ${action.tone}`}>
+                      <SvgIcon name={action.icon} />
+                    </span>
+                    <span>{action.label}</span>
+                  </button>
                 ))}
               </div>
-            </article>
-          </div>
 
-          <aside className="sideColumn">
-            <article className="panel assistantPanel">
-              <div className="panelHeader compact">
-                <div>
-                  <p className="eyebrow">Kate</p>
-                  <h2>Digitale assistent</h2>
-                </div>
-                <div className="kateBubble">AI</div>
-              </div>
-              <p className="assistantText">
-                Kate signaleert facturen, helpt bij betalingen en beantwoordt vragen over je saldo.
-              </p>
-              <button className="primaryButton" type="button">Start gesprek</button>
-            </article>
+              <div className="actionList">
+                {menuActions.map((item) => {
+                  const content = (
+                    <>
+                      <span className="listIcon">
+                        <SvgIcon name={item.icon} />
+                      </span>
+                      <span className="listLabel">
+                        {item.label}
+                        {item.badge ? <em className="newBadge">{item.badge}</em> : null}
+                      </span>
+                      <span className="listChevron">
+                        <SvgIcon name="chevron" />
+                      </span>
+                    </>
+                  )
 
-            <article className="panel tasksPanel">
-              <div className="panelHeader compact">
-                <div>
-                  <p className="eyebrow">Acties</p>
-                  <h2>Ondertekenen & goedkeuren</h2>
-                </div>
-              </div>
-              <ul className="alertList">
-                {alerts.map((item) => (
-                  <li key={item}>
-                    <span className="checkMark">✓</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
+                  if (item.href) {
+                    return (
+                      <a
+                        className="actionListItem"
+                        href={item.href}
+                        key={item.id}
+                        onClick={(event) => handleInternalNav(event, item.href)}
+                      >
+                        {content}
+                      </a>
+                    )
+                  }
 
-            <article className="panel contactPanel">
-              <div className="panelHeader compact">
-                <div>
-                  <p className="eyebrow">Contact</p>
-                  <h2>Kantoor / KBC Live</h2>
-                </div>
+                  return (
+                    <button className="actionListItem" type="button" key={item.id}>
+                      {content}
+                    </button>
+                  )
+                })}
               </div>
-              <div className="contactActions">
-                <button className="secondaryButton" type="button">Bel KBC Live</button>
-                <button className="secondaryButton" type="button">Maak afspraak</button>
-              </div>
-            </article>
-          </aside>
-        </section>
-      </main>
-
-      <button className="assistantFab" type="button" aria-label="Open Kate assistent">
-        ✦
-      </button>
+            </div>
+          </section>
+        </main>
+      </div>
     </div>
   )
 }
