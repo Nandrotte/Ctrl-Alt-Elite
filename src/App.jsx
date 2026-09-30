@@ -48,68 +48,6 @@ const menuActions = [
   { id: 'docs', label: 'Documenten', icon: 'docs' },
 ]
 
-const mockTransactions = [
-  ...['Netflix', 'Netflix', 'Netflix'].map((merchant, index) => ({ merchant, amount: 17.99, date: ['03/07/2026', '03/08/2026', '03/09/2026'][index] })),
-  ...['Disney+', 'Disney+', 'Disney+'].map((merchant, index) => ({ merchant, amount: 10.99, date: ['09/07/2026', '09/08/2026', '09/09/2026'][index] })),
-  ...['Spotify', 'Spotify', 'Spotify'].map((merchant, index) => ({ merchant, amount: 10.99, date: ['12/07/2026', '12/08/2026', '12/09/2026'][index] })),
-  ...['Adobe Creative Cloud', 'Adobe Creative Cloud', 'Adobe Creative Cloud'].map((merchant, index) => ({ merchant, amount: 24.99, date: ['18/07/2026', '18/08/2026', '18/09/2026'][index] })),
-  ...['Basic-Fit', 'Basic-Fit', 'Basic-Fit'].map((merchant, index) => ({ merchant, amount: 29.99, date: ['24/07/2026', '24/08/2026', '24/09/2026'][index] })),
-  { merchant: 'Coolblue', amount: 249, date: '16/09/2026' },
-]
-
-const subscriptionProfiles = {
-  Netflix: { category: 'Streaming', color: '#0057b8' },
-  'Disney+': { category: 'Streaming', color: '#003b70' },
-  Spotify: { category: 'Muziek', color: '#087fc1' },
-  'Adobe Creative Cloud': { category: 'Software', color: '#4d78a8' },
-  'Basic-Fit': { category: 'Sport', color: '#00a3e0' },
-}
-
-function parseDate(date) {
-  const [day, month, year] = date.split('/').map(Number)
-  return new Date(year, month - 1, day)
-}
-
-function formatDate(date) {
-  return date.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-function detectSubscriptions(transactions) {
-  const grouped = transactions.reduce((groups, transaction) => {
-    groups[transaction.merchant] = [...(groups[transaction.merchant] || []), transaction]
-    return groups
-  }, {})
-
-  return Object.entries(grouped).flatMap(([name, payments], index) => {
-    if (payments.length < 3 || !subscriptionProfiles[name]) return []
-    const ordered = [...payments].sort((a, b) => parseDate(a.date) - parseDate(b.date))
-    const intervals = ordered.slice(1).map((payment, paymentIndex) => (
-      (parseDate(payment.date) - parseDate(ordered[paymentIndex].date)) / 86400000
-    ))
-    const amountRange = Math.max(...ordered.map((payment) => payment.amount)) - Math.min(...ordered.map((payment) => payment.amount))
-    const averageAmount = ordered.reduce((sum, payment) => sum + payment.amount, 0) / ordered.length
-    const monthlyPattern = intervals.every((interval) => interval >= 25 && interval <= 35)
-    const stableAmount = amountRange / averageAmount <= 0.1
-    if (!monthlyPattern || !stableAmount) return []
-
-    const nextDate = new Date(parseDate(ordered[ordered.length - 1].date))
-    nextDate.setDate(nextDate.getDate() + Math.round(intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length))
-    return [{
-      id: index + 1,
-      name,
-      ...subscriptionProfiles[name],
-      amount: Number(averageAmount.toFixed(2)),
-      date: formatDate(nextDate),
-      frequency: 'Maandelijks',
-      confidence: 98,
-      reason: `${payments.length} gelijke maandelijkse betalingen`,
-      status: 'Herkend',
-    }]
-  })
-}
-
-const initialSubscriptions = detectSubscriptions(mockTransactions)
-
 const euro = (amount) => `€ ${amount.toFixed(2).replace('.', ',')}`
 
 function backendDateToUi(date) {
@@ -320,12 +258,12 @@ function KbcHeader() {
 }
 
 function SubscriptionManagerPage() {
-  const [subscriptions, setSubscriptions] = useState(initialSubscriptions)
+  const [subscriptions, setSubscriptions] = useState([])
   const [dashboardData, setDashboardData] = useState(null)
-  const [backendStatus, setBackendStatus] = useState('offline')
+  const [backendStatus, setBackendStatus] = useState('loading')
   const [category, setCategory] = useState('Alle categorieën')
-  const [reserveEnabled, setReserveEnabled] = useState(true)
-  const [reserveAmount, setReserveAmount] = useState(93.95)
+  const [reserveEnabled, setReserveEnabled] = useState(false)
+  const [reserveAmount, setReserveAmount] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const [showCompare, setShowCompare] = useState(false)
   const [newSubscription, setNewSubscription] = useState({ name: '', category: 'Streaming', amount: '9.99', date: '01/11/2026' })
@@ -346,11 +284,12 @@ function SubscriptionManagerPage() {
           amount: Number(item.amount),
           confidence: Number(item.confidence) * 100,
         })))
+        setReserveEnabled(dashboard.reserve.enabled)
         setReserveAmount(Number(dashboard.reserve.monthlyTarget))
         setBackendStatus('live')
       })
       .catch(() => {
-        if (!cancelled) setBackendStatus('offline')
+        if (!cancelled) setBackendStatus('error')
       })
     return () => { cancelled = true }
   }, [])
@@ -413,7 +352,7 @@ function SubscriptionManagerPage() {
             </a>
             <h1 className="sectionTitle">Subscriptie Manager</h1>
             <p>Je terugkerende betalingen, automatisch herkend en overzichtelijk bij elkaar.</p>
-            <span className="aiStatus"><span /> AI-herkenning actief · fictieve transactiedata · {backendStatus === 'live' ? 'backend verbonden' : 'lokale demo'}</span>
+            <span className="aiStatus"><span /> {backendStatus === 'live' ? 'Backend verbonden' : backendStatus === 'loading' ? 'Backendgegevens laden…' : 'Backend niet bereikbaar'}</span>
           </section>
 
           <section className="subscriptionMetrics" aria-label="Samenvatting abonnementen">
@@ -474,7 +413,7 @@ function SubscriptionManagerPage() {
 
           <section className="reservePanel">
             <div><span className="eyebrowLabel">OPTIONEEL</span><h2>Reserveer je vaste bedrag</h2><p>Houd vooraf genoeg ruimte opzij voor je maandelijkse abonnementen.</p></div>
-            <div className="reserveControls"><label className="toggleLabel"><input type="checkbox" checked={reserveEnabled} onChange={(event) => { setReserveEnabled(event.target.checked); syncReserve(event.target.checked, reserveAmount) }} /><span className="toggleTrack" /> Reserve actief</label><label className="reserveInput"><span>Maandelijks doel</span><input type="number" min="0" step="0.01" value={reserveAmount} onChange={(event) => setReserveAmount(Number(event.target.value))} onBlur={() => syncReserve(reserveEnabled, reserveAmount)} /></label><strong>{reserveEnabled ? euro(reserveAmount - total) : 'Uitgeschakeld'} <small>beschikbaar</small></strong></div>
+            <div className="reserveControls"><label className="toggleLabel"><input type="checkbox" checked={reserveEnabled} onChange={(event) => { setReserveEnabled(event.target.checked); syncReserve(event.target.checked, reserveAmount) }} /><span className="toggleTrack" /> Reserve actief</label><label className="reserveInput"><span>Maandelijks doel</span><input type="number" min="0" step="0.01" value={reserveAmount ?? ''} onChange={(event) => setReserveAmount(Number(event.target.value))} onBlur={() => syncReserve(reserveEnabled, reserveAmount)} /></label><strong>{reserveEnabled && reserveAmount !== null ? euro(reserveAmount - total) : 'Uitgeschakeld'} <small>beschikbaar</small></strong></div>
           </section>
 
           {showAdd && <div className="modalBackdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowAdd(false)}><form className="modalCard" onSubmit={addSubscription}><button type="button" className="modalClose" onClick={() => setShowAdd(false)}>×</button><span className="eyebrowLabel">NIEUWE HERKENNING</span><h2>Abonnement toevoegen</h2><p>Voeg een voorstel toe dat je later aan transacties kunt koppelen.</p><label>Naam<input required value={newSubscription.name} onChange={(event) => setNewSubscription({ ...newSubscription, name: event.target.value })} placeholder="bv. Videoland" /></label><label>Categorie<select value={newSubscription.category} onChange={(event) => setNewSubscription({ ...newSubscription, category: event.target.value })}><option>Streaming</option><option>Muziek</option><option>Software</option><option>Sport</option></select></label><div className="formGrid"><label>Bedrag<input required type="number" min="0.01" step="0.01" value={newSubscription.amount} onChange={(event) => setNewSubscription({ ...newSubscription, amount: event.target.value })} /></label><label>Volgende datum<input type="text" value={newSubscription.date} onChange={(event) => setNewSubscription({ ...newSubscription, date: event.target.value })} /></label></div><button className="primaryButton" type="submit">Opslaan</button></form></div>}
