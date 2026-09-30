@@ -503,6 +503,645 @@ a {
   height: 18px;
 }
 
+.subscriptionMain {
+  gap: 14px;
+  padding: 0 16px 28px;
+}
+
+.subscriptionHero {
+  display: grid;
+  gap: 8px;
+  padding: 8px 2px 10px;
+}
+
+.subscriptionHero p,
+.reservePanel p,
+.overlapNotice p,
+.modalCard p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.subscriptionHero .sectionTitle,
+.subscriptionCard h2,
+.overlapNotice h2,
+.reservePanel h2,
+.modalCard h2 {
+  margin: 0;
+  color: var(--kbc-navy);
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.aiStatus {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  color: var(--kbc-teal);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.aiStatus span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--kbc-teal);
+}
+
+.subscriptionMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.subscriptionMetrics article {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 15px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+
+.subscriptionMetrics span,
+.subscriptionMetrics small,
+.cardMeta,
+.eyebrowLabel,
+.tableHeader,
+.managerControls label,
+.reserveInput span {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.subscriptionMetrics strong {
+  color: var(--kbc-navy);
+  font-size: 1.12rem;
+  line-height: 1.1;
+}
+
+.subscriptionMetrics small {
+  overflow: hidden;
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.subscriptionCard,
+.overlapNotice,
+.reservePanel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+
+.subscriptionCard {
+  overflow: hidden;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.eyebrowLabel {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--kbc-blue);
+  font-size: .62rem;
+}
+
+.cardTitleRow h2 {
+  font-size: 1.1rem;
+}
+
+.cardMeta {
+  padding-top: 3px;
+  color: var(--kbc-blue);
+  white-space: nowrap;
+}
+
+.preDebitNotice {
+  display: grid;
+  gap: 2px;
+  margin: 0 18px 8px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--kbc-cyan);
+  background: var(--kbc-cyan-soft);
+  color: var(--kbc-navy);
+  font-size: .78rem;
+}
+
+.preDebitNotice span {
+  color: var(--muted);
+}
+
+.subscriptionRows {
+  padding: 0 18px;
+}
+
+.subscriptionItem {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 0;
+  border-bottom: 1px solid #edf1f4;
+}
+
+.subscriptionItem:last-child {
+  border-bottom: 0;
+}
+
+.subscriptionBadge {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.subscriptionInfo,
+.subscriptionAmount {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.subscriptionInfo strong,
+.subscriptionAmount strong {
+  color: var(--kbc-navy);
+  font-size: .91rem;
+}
+
+.subscriptionInfo span,
+.subscriptionAmount span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: .72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subscriptionAmount {
+  text-align: right;
+}
+
+.spendingCard {
+  padding-bottom: 14px;
+}
+
+.chartTotal {
+  color: var(--kbc-navy);
+  font-size: .95rem;
+}
+
+.chartTotal small {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 500;
+}
+
+.spendChart {
+  padding: 12px 18px 4px;
+}
+
+.chartPlot {
+  height: 180px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 10px;
+  position: relative;
+  padding: 18px 4px 0;
+  border-bottom: 1px solid #cbd8e2;
+}
+
+.chartGridLine {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 1px dashed #dfe7ed;
+  pointer-events: none;
+}
+
+.chartGridTop {
+  top: 18px;
+}
+
+.chartGridMiddle {
+  top: 50%;
+}
+
+.chartGridBottom {
+  bottom: 0;
+}
+
+.chartColumn {
+  height: 100%;
+  min-width: 42px;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 1;
+}
+
+.chartColumn > strong {
+  margin-bottom: 5px;
+  color: var(--kbc-navy);
+  font-size: .67rem;
+  white-space: nowrap;
+}
+
+.chartColumn > i {
+  width: min(34px, 72%);
+  min-height: 14px;
+  display: block;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, var(--kbc-cyan), var(--kbc-navy));
+  box-shadow: 0 3px 8px rgba(0, 50, 90, .14);
+}
+
+.chartColumn > span {
+  max-width: 84px;
+  margin-top: 7px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: .65rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding-top: 14px;
+}
+
+.chartLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: .68rem;
+}
+
+.chartLegend span > i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--kbc-cyan);
+}
+
+.chartLegend span:nth-child(2n) > i {
+  background: var(--kbc-navy);
+}
+
+.chartLegend span:nth-child(3n) > i {
+  background: var(--kbc-teal);
+}
+
+.chartLegend strong {
+  color: var(--kbc-navy);
+  font-size: .68rem;
+}
+
+/* Keep the chart readable when a filter leaves only one category. */
+.spendChart:has(.chartColumn:only-child) .chartColumn > i {
+  width: 48px;
+}
+
+.spendChart:has(.chartColumn:only-child) .chartPlot {
+  justify-content: center;
+}
+
+.spendBar {
+  display: grid;
+  gap: 6px;
+}
+
+.spendBar > div {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: .8rem;
+}
+
+.spendBar strong {
+  color: var(--kbc-navy);
+}
+
+.spendBar i {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--kbc-blue), var(--kbc-cyan));
+}
+
+.overlapNotice {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 13px;
+  padding: 18px;
+  border-color: #b9dce9;
+  background: var(--kbc-cyan-soft);
+}
+
+.noticeIcon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--kbc-navy);
+  color: #fff;
+}
+
+.noticeIcon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.overlapNotice h2 {
+  font-size: 1.12rem;
+}
+
+.overlapNotice p {
+  margin: 7px 0 13px;
+  font-size: .84rem;
+}
+
+.primaryButton,
+.secondaryButton {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.primaryButton {
+  background: var(--kbc-cyan);
+  color: var(--kbc-navy);
+}
+
+.secondaryButton {
+  border: 1px solid #b8d9e8;
+  background: #fff;
+  color: var(--kbc-blue);
+  white-space: nowrap;
+}
+
+.managerControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: #f8fafb;
+  border-bottom: 1px solid var(--line);
+}
+
+.managerControls select,
+.modalCard input,
+.modalCard select,
+.reserveInput input {
+  min-height: 38px;
+  border: 1px solid #c8d6e0;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--kbc-navy);
+  outline: none;
+  padding: 0 10px;
+}
+
+.managerControls select:focus,
+.modalCard input:focus,
+.modalCard select:focus,
+.reserveInput input:focus {
+  border-color: var(--kbc-cyan);
+  box-shadow: 0 0 0 3px rgba(0, 170, 229, .14);
+}
+
+.subscriptionTable {
+  overflow-x: auto;
+}
+
+.tableHeader,
+.tableRow {
+  min-width: 480px;
+  display: grid;
+  grid-template-columns: 1.35fr 1fr .85fr 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 18px;
+}
+
+.tableHeader {
+  background: #f8fafb;
+  border-bottom: 1px solid var(--line);
+  font-size: .61rem;
+}
+
+.tableRow {
+  border-bottom: 1px solid #edf1f4;
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.tableRow:last-child {
+  border-bottom: 0;
+}
+
+.tableRow strong {
+  color: var(--kbc-navy);
+}
+
+.reservePanel {
+  display: grid;
+  gap: 15px;
+  padding: 19px;
+  background: var(--kbc-navy);
+  color: #fff;
+}
+
+.reservePanel h2,
+.reservePanel .eyebrowLabel {
+  color: #fff;
+}
+
+.reservePanel .eyebrowLabel {
+  color: var(--kbc-cyan);
+}
+
+.reservePanel p {
+  margin-top: 7px;
+  color: rgba(255, 255, 255, .72);
+  font-size: .83rem;
+}
+
+.reserveControls {
+  display: grid;
+  grid-template-columns: auto minmax(100px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.toggleLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.toggleLabel input {
+  position: absolute;
+  opacity: 0;
+}
+
+.toggleTrack {
+  width: 36px;
+  height: 21px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .3);
+}
+
+.toggleTrack::after {
+  display: block;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  content: '';
+  transition: transform .15s ease;
+}
+
+.toggleLabel input:checked + .toggleTrack {
+  background: var(--kbc-cyan);
+}
+
+.toggleLabel input:checked + .toggleTrack::after {
+  transform: translateX(15px);
+}
+
+.reserveInput {
+  display: grid;
+  gap: 5px;
+}
+
+.reserveInput span {
+  color: rgba(255, 255, 255, .7);
+  font-size: .61rem;
+}
+
+.reserveInput input {
+  width: 100%;
+}
+
+.reserveControls > strong {
+  display: grid;
+  color: #fff;
+  font-size: 1rem;
+  text-align: right;
+}
+
+.reserveControls > strong small {
+  color: rgba(255, 255, 255, .65);
+  font-size: .65rem;
+  font-weight: 500;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 38, 71, .42);
+}
+
+.modalCard {
+  position: relative;
+  width: min(100%, 390px);
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0, 38, 71, .24);
+}
+
+.modalCard label {
+  display: grid;
+  gap: 5px;
+  color: var(--kbc-navy);
+  font-size: .8rem;
+  font-weight: 700;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.modalClose {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  color: var(--muted);
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.compareRow,
+.compareTotal {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.compareRow strong,
+.compareTotal strong {
+  color: var(--kbc-navy);
+}
+
+.compareTotal {
+  margin-top: 4px;
+  border: 0;
+  font-weight: 700;
+}
+
 .kbcMain--empty {
   padding: 8px 16px 24px;
 }
