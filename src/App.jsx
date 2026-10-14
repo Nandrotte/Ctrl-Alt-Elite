@@ -48,12 +48,25 @@ const menuActions = [
   { id: 'docs', label: 'Documenten', icon: 'docs' },
 ]
 
-const euro = (amount) => `€ ${amount.toFixed(2).replace('.', ',')}`
+const ALL_CATEGORIES = 'Alle'
 
-function backendDateToUi(date) {
-  const [year, month, day] = date.split('-')
-  return `${day}/${month}/${year}`
+const euroFormat = new Intl.NumberFormat('nl-BE', { style: 'currency', currency: 'EUR' })
+const euro = (amount) => euroFormat.format(amount)
+
+// Backend dates are ISO (yyyy-mm-dd); parse them as local dates.
+const toDate = (iso) => new Date(`${iso}T00:00:00`)
+const shortDate = (iso) => toDate(iso).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' })
+const longDate = (iso) => toDate(iso).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' })
+const dayOfMonth = (iso) => toDate(iso).getDate()
+const monthShort = (iso) => toDate(iso).toLocaleDateString('nl-BE', { month: 'short' }).replace('.', '')
+const monthLabel = (iso) => (iso ? toDate(iso).toLocaleDateString('nl-BE', { month: 'long', year: 'numeric' }) : '')
+
+function todayIso() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
+
+const emptySubscription = { name: '', category: 'Streaming', amount: '9.99', nextDate: todayIso() }
 
 function getPageFromLocation() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/'
@@ -228,6 +241,38 @@ function SvgIcon({ name }) {
           <path d="M14 4.5V9h4.5M9.5 13h5M9.5 16h3.5" {...common} />
         </svg>
       )
+    case 'calendar':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="5.5" width="16" height="14.5" rx="2.2" {...common} />
+          <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" {...common} />
+        </svg>
+      )
+    case 'spark':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 17.5h6M10 20.5h4" {...common} />
+          <path d="M12 3.5a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2v.2h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3.5Z" {...common} />
+        </svg>
+      )
+    case 'plus':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" {...common} />
+        </svg>
+      )
+    case 'close':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" {...common} />
+        </svg>
+      )
+    case 'check':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m5 12.5 4.5 4.5L19 7.5" {...common} />
+        </svg>
+      )
     default:
       return null
   }
@@ -258,16 +303,24 @@ function KbcHeader() {
   )
 }
 
+const STATUS_LABELS = {
+  HERKEND: 'Herkend',
+  BEVESTIGD: 'Bevestigd',
+  GEANNULEERD: 'Opgezegd',
+}
+
+const CATEGORY_TONES = ['navy', 'blue', 'teal', 'cyan', 'slate']
+
 function SubscriptionManagerPage() {
   const [subscriptions, setSubscriptions] = useState([])
   const [dashboardData, setDashboardData] = useState(null)
   const [backendStatus, setBackendStatus] = useState('loading')
-  const [category, setCategory] = useState('Alle categorieën')
+  const [category, setCategory] = useState(ALL_CATEGORIES)
   const [reserveEnabled, setReserveEnabled] = useState(false)
   const [reserveAmount, setReserveAmount] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const [showCompare, setShowCompare] = useState(false)
-  const [newSubscription, setNewSubscription] = useState({ name: '', category: 'Streaming', amount: '9.99', date: '01/11/2026' })
+  const [newSubscription, setNewSubscription] = useState(emptySubscription)
 
   useEffect(() => {
     let cancelled = false
@@ -281,9 +334,8 @@ function SubscriptionManagerPage() {
         setDashboardData(dashboard)
         setSubscriptions(dashboard.subscriptions.map((item) => ({
           ...item,
-          date: backendDateToUi(item.nextDate),
           amount: Number(item.amount),
-          confidence: Number(item.confidence) * 100,
+          confidence: Math.round(Number(item.confidence) * 100),
         })))
         setReserveEnabled(dashboard.reserve.enabled)
         setReserveAmount(Number(dashboard.reserve.monthlyTarget))
@@ -295,50 +347,103 @@ function SubscriptionManagerPage() {
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    if (!showAdd && !showCompare) return undefined
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowAdd(false)
+        setShowCompare(false)
+      }
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [showAdd, showCompare])
+
   const syncReserve = (enabled, amount) => {
     fetch('/api/reserve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled, monthlyTarget: Number(amount) }),
+      body: JSON.stringify({ enabled, monthlyTarget: Number(amount) || 0 }),
     }).catch(() => setBackendStatus('offline'))
   }
 
+  const updateStatus = (item, status) => {
+    setSubscriptions((current) => (
+      status === 'GEANNEGEERD'
+        ? current.filter((entry) => entry.id !== item.id)
+        : current.map((entry) => (entry.id === item.id ? { ...entry, status } : entry))
+    ))
+    if (item.manual) return
+    fetch(`/api/subscriptions/${item.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    }).catch(() => setBackendStatus('offline'))
+  }
+
+  const categories = useMemo(
+    () => [...new Set(subscriptions.map((item) => item.category))],
+    [subscriptions],
+  )
+  const categoryTone = (name) => CATEGORY_TONES[Math.max(categories.indexOf(name), 0) % CATEGORY_TONES.length]
+
+  const pendingReview = subscriptions.filter((item) => item.status === 'HERKEND')
+  const activeSubscriptions = subscriptions.filter((item) => item.status !== 'GEANNULEERD')
+  const monthlyTotal = activeSubscriptions.reduce((sum, item) => sum + item.amount, 0)
+  const annualTotal = monthlyTotal * 12
+
   const visibleSubscriptions = useMemo(() => (
-    category === 'Alle categorieën'
-      ? subscriptions
-      : subscriptions.filter((item) => item.category === category)
+    [...(category === ALL_CATEGORIES ? subscriptions : subscriptions.filter((item) => item.category === category))]
+      .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
   ), [category, subscriptions])
-  const total = visibleSubscriptions.reduce((sum, item) => sum + item.amount, 0)
+
   const categorySpend = useMemo(() => {
-    const grouped = visibleSubscriptions.reduce((groups, item) => ({
+    const grouped = activeSubscriptions.reduce((groups, item) => ({
       ...groups,
       [item.category]: (groups[item.category] || 0) + item.amount,
     }), {})
     return Object.entries(grouped).sort(([, first], [, second]) => second - first)
-  }, [visibleSubscriptions])
-  const highestCategorySpend = Math.max(...categorySpend.map(([, amount]) => amount), 1)
-  const streamingOverlap = dashboardData?.overlaps?.find((item) => item.category === 'Streaming')
-  const streaming = streamingOverlap
-    ? streamingOverlap.subscriptions.map((name) => subscriptions.find((item) => item.name === name)).filter(Boolean)
-    : subscriptions.filter((item) => item.category === 'Streaming')
+  }, [activeSubscriptions])
+
+  const upcoming = [...activeSubscriptions].sort((a, b) => a.nextDate.localeCompare(b.nextDate))
+  const nextSubscription = upcoming.find((item) => item.nextDate >= todayIso()) || upcoming[0]
+
+  const overlap = dashboardData?.overlaps?.[0]
+  const overlapItems = overlap
+    ? overlap.subscriptions.map((name) => subscriptions.find((item) => item.name === name)).filter(Boolean)
+    : []
+  const overlapSaving = overlap ? Number(overlap.possibleMonthlySaving) : 0
   const preDebitAlerts = dashboardData?.alerts || []
-  const nextSubscription = [...visibleSubscriptions].sort((a, b) => a.date.localeCompare(b.date))[0]
+
+  const reserveTarget = Number(reserveAmount) || 0
+  const reserveCoverage = monthlyTotal > 0 ? Math.min(100, Math.round((reserveTarget / monthlyTotal) * 100)) : 100
+  const reserveDifference = reserveTarget - monthlyTotal
 
   const addSubscription = (event) => {
     event.preventDefault()
     if (!newSubscription.name.trim() || Number(newSubscription.amount) <= 0) return
     setSubscriptions((current) => [...current, {
-      ...newSubscription,
-      id: Date.now(),
+      id: `manual-${Date.now()}`,
+      manual: true,
       name: newSubscription.name.trim(),
+      category: newSubscription.category,
       amount: Number(newSubscription.amount),
-      confidence: 76,
-      color: '#003665',
-      reason: 'Handmatig toegevoegd voor controle',
+      nextDate: newSubscription.nextDate,
+      frequency: 'Maandelijks',
+      confidence: 100,
+      reason: 'Handmatig toegevoegd',
+      status: 'BEVESTIGD',
     }])
-    setNewSubscription({ name: '', category: 'Streaming', amount: '9.99', date: '01/11/2026' })
+    setNewSubscription(emptySubscription)
     setShowAdd(false)
   }
+
+  const statusText = {
+    live: 'Live gekoppeld',
+    loading: 'Gegevens laden…',
+    error: 'Backend niet bereikbaar',
+    offline: 'Wijziging niet opgeslagen',
+  }[backendStatus]
 
   return (
     <div className="shell">
@@ -346,81 +451,312 @@ function SubscriptionManagerPage() {
         <div className="topBand">
           <KbcHeader />
           <section className="subscriptionHero">
-            <a className="backText" href="/" onClick={(event) => handleInternalNav(event, '/')}>
+            <nav className="breadcrumb" aria-label="Kruimelpad">
+              <a href="/" onClick={(event) => handleInternalNav(event, '/')}>Overzicht</a>
               <SvgIcon name="chevron" />
-              Terug
-            </a>
-            <h1 className="sectionTitle">Subscriptie Manager</h1>
-            <p>Je terugkerende betalingen, automatisch herkend en overzichtelijk bij elkaar.</p>
-            <span className={`aiStatus ${backendStatus}`}><span /> {backendStatus === 'live' ? 'Backend verbonden' : backendStatus === 'loading' ? 'Backendgegevens laden…' : 'Backend niet bereikbaar'}</span>
+              <span>Subscriptie Manager</span>
+            </nav>
+            <div className="heroRow">
+              <div className="heroCopy">
+                <h1 className="sectionTitle">Subscriptie Manager</h1>
+                <p>Al je terugkerende betalingen automatisch herkend, op één plek.</p>
+              </div>
+              <div className="heroTotal">
+                <span>Vaste kosten per maand</span>
+                <strong>{euro(monthlyTotal)}</strong>
+                <small>{euro(annualTotal)} per jaar</small>
+              </div>
+            </div>
+            <span className={`aiStatus ${backendStatus}`}><span /> {statusText}</span>
           </section>
         </div>
 
         <main className="kbcMain subscriptionMain">
-
-          <section className="subscriptionMetrics" aria-label="Samenvatting abonnementen">
-            <article><span>Vaste kosten per maand</span><strong>{euro(total)}</strong></article>
-            <article><span>Volgende afschrijving</span><strong>{nextSubscription ? euro(nextSubscription.amount) : 'Geen'}</strong><small>{nextSubscription?.date || 'Geen abonnementen'}</small></article>
-            <article><span>Herkende abonnementen</span><strong>{visibleSubscriptions.length}</strong><small>op basis van betalingen</small></article>
+          <section className="kpiStrip" aria-label="Samenvatting">
+            <article>
+              <span className="kpiIcon"><SvgIcon name="subs" /></span>
+              <div><span>Actieve abonnementen</span><strong>{activeSubscriptions.length}</strong></div>
+            </article>
+            <article>
+              <span className="kpiIcon"><SvgIcon name="calendar" /></span>
+              <div>
+                <span>Volgende afschrijving</span>
+                <strong>{nextSubscription ? euro(nextSubscription.amount) : '—'}</strong>
+                <small>{nextSubscription ? `${shortDate(nextSubscription.nextDate)} · ${nextSubscription.name}` : 'Geen gepland'}</small>
+              </div>
+            </article>
+            <article>
+              <span className="kpiIcon"><SvgIcon name="wallet" /></span>
+              <div><span>Kosten per jaar</span><strong>{euro(annualTotal)}</strong></div>
+            </article>
+            <article className="kpiHighlight">
+              <span className="kpiIcon"><SvgIcon name="spark" /></span>
+              <div>
+                <span>Mogelijke besparing</span>
+                <strong>{euro(overlapSaving)}</strong>
+                <small>per maand</small>
+              </div>
+            </article>
           </section>
 
-          <section className="subscriptionCard upcomingCard">
-            <div className="cardTitleRow"><div><span className="eyebrowLabel">OVERZICHT</span><h2>Komende afschrijvingen</h2></div><span className="cardMeta">OKTOBER 2026</span></div>
-            {preDebitAlerts.map((alert) => <div className="preDebitNotice" key={`${alert.subscription}-${alert.date}`}><strong>Herinnering: {alert.subscription}</strong><span>{alert.message} {euro(Number(alert.amount))} op {backendDateToUi(alert.date)}.</span></div>)}
-            <div className="subscriptionRows">
-              {visibleSubscriptions.map((item) => (
-                <article className="subscriptionItem" key={item.id}>
-                  <span className="subscriptionBadge" style={{ backgroundColor: item.color }}>{item.name.slice(0, 1)}</span>
-                  <div className="subscriptionInfo"><strong>{item.name}</strong><span>{item.category} · {item.reason}</span></div>
-                  <div className="subscriptionAmount"><strong>{euro(item.amount)}</strong><span>op {item.date}</span></div>
-                </article>
-              ))}
+          {preDebitAlerts.map((alert) => (
+            <div className="preDebitNotice" key={`${alert.subscription}-${alert.date}`}>
+              <SvgIcon name="bell" />
+              <div><strong>{alert.subscription} wordt binnenkort afgeschreven</strong><span>{alert.message} {euro(Number(alert.amount))} op {longDate(alert.date)}.</span></div>
             </div>
-          </section>
+          ))}
 
-          <section className="subscriptionCard spendingCard">
-            <div className="cardTitleRow"><div><span className="eyebrowLabel">MAANDELIJKSE IMPACT</span><h2>Waar gaat je geld naartoe?</h2></div><strong className="chartTotal">{euro(total)} <small>per maand</small></strong></div>
-            <div className="spendChart" role="img" aria-label="Maandelijkse abonnementskosten per categorie">
-              <div className="chartPlot">
-                <span className="chartGridLine chartGridTop" />
-                <span className="chartGridLine chartGridMiddle" />
-                <span className="chartGridLine chartGridBottom" />
-                {categorySpend.map(([label, amount]) => (
-                  <div className="chartColumn" key={label}>
-                    <strong>{euro(amount)}</strong>
-                    <i style={{ height: `${Math.max(12, (amount / highestCategorySpend) * 100)}%` }} />
-                    <span>{label}</span>
+          <div className="managerGrid">
+            <div className="mainColumn">
+              <section className="panel subscriptionsPanel">
+                <header className="panelHeader">
+                  <div>
+                    <h2>Jouw abonnementen</h2>
+                    <p>Herkend op basis van je betalingen van de afgelopen maanden.</p>
                   </div>
-                ))}
-              </div>
-              <div className="chartLegend">
-                {categorySpend.map(([label, amount]) => (
-                  <span key={`legend-${label}`}><i />{label}<strong>{Math.round((amount / Math.max(total, 1)) * 100)}%</strong></span>
-                ))}
-              </div>
-            </div>
-          </section>
+                  <button type="button" className="secondaryButton" onClick={() => setShowAdd(true)}>
+                    <SvgIcon name="plus" /> Toevoegen
+                  </button>
+                </header>
 
-          {streaming.length >= 2 && (
-            <section className="overlapNotice">
-              <span className="noticeIcon"><SvgIcon name="repeat" /></span>
-              <div><span className="eyebrowLabel">KANS OM TE BESPAREN</span><h2>Je hebt {streaming.length} streamingdiensten</h2><p>Netflix en Disney+ zijn allebei herkend in je betalingen. Vergelijk ze voordat je de volgende maand betaalt.</p><button type="button" className="primaryButton" onClick={() => setShowCompare(true)}>Vergelijk abonnementen</button></div>
-            </section>
+                {pendingReview.length > 0 && (
+                  <div className="reviewBar">
+                    <span className="reviewIcon"><SvgIcon name="check" /></span>
+                    <div>
+                      <strong>Kloppen deze abonnementen?</strong>
+                      <span>{pendingReview.length} herkend op basis van je betalingen, nog niet bevestigd.</span>
+                    </div>
+                    <button type="button" className="secondaryButton" onClick={() => pendingReview.forEach((item) => updateStatus(item, 'BEVESTIGD'))}>
+                      Alles bevestigen
+                    </button>
+                  </div>
+                )}
+
+                <div className="filterChips" role="tablist" aria-label="Filter op categorie">
+                  {[ALL_CATEGORIES, ...categories].map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      role="tab"
+                      aria-selected={category === name}
+                      className={category === name ? 'active' : ''}
+                      onClick={() => setCategory(name)}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="subscriptionList">
+                  <div className="listHead" aria-hidden="true">
+                    <span>Abonnement</span>
+                    <span>Status</span>
+                    <span>Volgende</span>
+                    <span>Per maand</span>
+                    <span />
+                  </div>
+                  {visibleSubscriptions.length === 0 && (
+                    <p className="emptyState">
+                      {backendStatus === 'loading' ? 'Abonnementen laden…' : 'Geen abonnementen gevonden.'}
+                    </p>
+                  )}
+                  {visibleSubscriptions.map((item) => (
+                    <article className={`subRow ${item.status === 'GEANNULEERD' ? 'isCancelled' : ''}`} key={item.id}>
+                      <div className="subMain">
+                        <span className={`subAvatar tone-${categoryTone(item.category)}`}>{item.name.slice(0, 1)}</span>
+                        <div className="subInfo">
+                          <strong>{item.name}</strong>
+                          <span>{item.category}{item.frequency && item.frequency !== 'Maandelijks' ? ` · ${item.frequency}` : ''}</span>
+                        </div>
+                      </div>
+                      <div className="subStatus">
+                        <span
+                          className={`statusPill status-${item.status}`}
+                          title={item.status === 'HERKEND' ? `${item.confidence}% zeker · ${item.reason}` : undefined}
+                        >
+                          {STATUS_LABELS[item.status] || item.status}
+                        </span>
+                      </div>
+                      <div className="subDate">{shortDate(item.nextDate)}</div>
+                      <div className="subAmount">
+                        <strong>{euro(item.amount)}</strong>
+                      </div>
+                      <div className="subActions">
+                        {item.status === 'HERKEND' && (
+                          <>
+                            <button type="button" className="iconAction confirm" title="Bevestigen" aria-label={`${item.name} bevestigen`} onClick={() => updateStatus(item, 'BEVESTIGD')}>
+                              <SvgIcon name="check" />
+                            </button>
+                            <button type="button" className="iconAction" title="Geen abonnement" aria-label={`${item.name} is geen abonnement`} onClick={() => updateStatus(item, 'GEANNEGEERD')}>
+                              <SvgIcon name="close" />
+                            </button>
+                          </>
+                        )}
+                        {item.status === 'BEVESTIGD' && (
+                          <button type="button" className="iconAction" title="Markeer als opgezegd" aria-label={`${item.name} markeren als opgezegd`} onClick={() => updateStatus(item, 'GEANNULEERD')}>
+                            <SvgIcon name="close" />
+                          </button>
+                        )}
+                        {item.status === 'GEANNULEERD' && (
+                          <button type="button" className="iconAction" title="Opnieuw activeren" aria-label={`${item.name} opnieuw activeren`} onClick={() => updateStatus(item, 'BEVESTIGD')}>
+                            <SvgIcon name="repeat" />
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+                <section className="panel calendarPanel">
+                  <header className="panelHeader compact">
+                    <h2>Kalender afschrijvingen</h2>
+                    <span className="panelMeta">{monthLabel(upcoming[0]?.nextDate)}</span>
+                  </header>
+                  <ol className="timeline">
+                    {upcoming.map((item) => (
+                      <li key={`cal-${item.id}`} className={item.nextDate < todayIso() ? 'isPast' : ''}>
+                        <span className="dateBlock">
+                          <strong>{dayOfMonth(item.nextDate)}</strong>
+                          <small>{monthShort(item.nextDate)}</small>
+                        </span>
+                        <span className="timelineName">{item.name}</span>
+                        <strong>{euro(item.amount)}</strong>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+            </div>
+
+            <aside className="sideColumn">
+              <section className="panel">
+                <header className="panelHeader compact">
+                  <h2>Per categorie</h2>
+                  <span className="panelMeta">{euro(monthlyTotal)} / maand</span>
+                </header>
+                <div className="categoryBars">
+                  {categorySpend.map(([label, amount]) => (
+                    <div className="categoryBar" key={label}>
+                      <div className="categoryBarLabel">
+                        <span><i className={`dot tone-${categoryTone(label)}`} />{label}</span>
+                        <strong>{euro(amount)}</strong>
+                      </div>
+                      <div className="barTrack">
+                        <i className={`tone-${categoryTone(label)}`} style={{ width: `${(amount / Math.max(monthlyTotal, 1)) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                  {categorySpend.length === 0 && <p className="emptyState">Nog geen gegevens.</p>}
+                </div>
+              </section>
+
+              {overlapItems.length >= 2 && (
+                <section className="panel insightPanel">
+                  <span className="insightTag"><SvgIcon name="spark" /> Besparingstip</span>
+                  <h2>{overlapItems.length} abonnementen in {overlap.category}</h2>
+                  <p>
+                    Je betaalt voor {overlapItems.map((item) => item.name).join(' en ')}. Door er één op te zeggen bespaar je tot{' '}
+                    <strong>{euro(overlapSaving * 12)}</strong> per jaar.
+                  </p>
+                  <button type="button" className="primaryButton" onClick={() => setShowCompare(true)}>Vergelijk abonnementen</button>
+                </section>
+              )}
+
+              <section className="panel reservePanel">
+                <header className="panelHeader compact">
+                  <div>
+                    <h2>Reserve voor vaste kosten</h2>
+                    <p>Zet elke maand automatisch geld opzij.</p>
+                  </div>
+                  <label className="toggleLabel">
+                    <input
+                      type="checkbox"
+                      checked={reserveEnabled}
+                      onChange={(event) => { setReserveEnabled(event.target.checked); syncReserve(event.target.checked, reserveAmount) }}
+                    />
+                    <span className="toggleTrack" />
+                    <span className="srOnly">Reserve actief</span>
+                  </label>
+                </header>
+                <div className={`reserveBody ${reserveEnabled ? '' : 'isDisabled'}`}>
+                  <label className="reserveInput">
+                    <span>Maandelijks bedrag</span>
+                    <div className="inputAffix">
+                      <em>€</em>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        disabled={!reserveEnabled}
+                        value={reserveAmount ?? ''}
+                        onChange={(event) => setReserveAmount(event.target.value)}
+                        onBlur={() => syncReserve(reserveEnabled, reserveAmount)}
+                      />
+                    </div>
+                  </label>
+                  <div className="coverage">
+                    <div className="coverageTop"><span>Dekking vaste kosten</span><strong>{reserveCoverage}%</strong></div>
+                    <div className="barTrack"><i className={reserveDifference >= 0 ? 'tone-teal' : 'tone-blue'} style={{ width: `${reserveCoverage}%` }} /></div>
+                    <small className={reserveDifference >= 0 ? 'ok' : 'short'}>
+                      {!reserveEnabled
+                        ? 'Reserve staat uit'
+                        : reserveDifference >= 0
+                          ? `Volledig gedekt, ${euro(reserveDifference)} buffer`
+                          : `Nog ${euro(Math.abs(reserveDifference))} tekort per maand`}
+                    </small>
+                  </div>
+                </div>
+              </section>
+
+            </aside>
+          </div>
+
+          {showAdd && (
+            <div className="modalBackdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowAdd(false)}>
+              <form className="modalCard" onSubmit={addSubscription}>
+                <button type="button" className="modalClose" aria-label="Sluiten" onClick={() => setShowAdd(false)}>×</button>
+                <h2>Abonnement toevoegen</h2>
+                <p>Voeg een abonnement toe dat we nog niet herkend hebben.</p>
+                <label>Naam<input required value={newSubscription.name} onChange={(event) => setNewSubscription({ ...newSubscription, name: event.target.value })} placeholder="bv. Videoland" /></label>
+                <label>Categorie<select value={newSubscription.category} onChange={(event) => setNewSubscription({ ...newSubscription, category: event.target.value })}>{[...new Set([...categories, 'Streaming', 'Muziek', 'Software', 'Sport', 'Andere'])].map((name) => <option key={name}>{name}</option>)}</select></label>
+                <div className="formGrid">
+                  <label>Bedrag per maand<input required type="number" min="0.01" step="0.01" value={newSubscription.amount} onChange={(event) => setNewSubscription({ ...newSubscription, amount: event.target.value })} /></label>
+                  <label>Volgende afschrijving<input required type="date" value={newSubscription.nextDate} onChange={(event) => setNewSubscription({ ...newSubscription, nextDate: event.target.value })} /></label>
+                </div>
+                <div className="modalActions">
+                  <button type="button" className="secondaryButton" onClick={() => setShowAdd(false)}>Annuleren</button>
+                  <button className="primaryButton" type="submit">Opslaan</button>
+                </div>
+              </form>
+            </div>
           )}
 
-          <section className="subscriptionCard allSubscriptions">
-            <div className="cardTitleRow"><div><span className="eyebrowLabel">HERKENDE BETALINGEN</span><h2>Jouw abonnementen</h2></div><button type="button" className="secondaryButton" onClick={() => setShowAdd(true)}>+ Toevoegen</button></div>
-            <div className="managerControls"><label htmlFor="category-filter">Filter</label><select id="category-filter" value={category} onChange={(event) => setCategory(event.target.value)}><option>Alle categorieën</option><option>Streaming</option><option>Muziek</option><option>Software</option><option>Sport</option></select></div>
-            <div className="subscriptionTable"><div className="tableHeader"><span>Abonnement</span><span>Categorie</span><span>Bedrag</span><span>Volgende datum</span></div>{visibleSubscriptions.map((item) => <div className="tableRow" key={`table-${item.id}`}><strong>{item.name}</strong><span>{item.category}</span><strong>{euro(item.amount)}</strong><span>{item.date}</span></div>)}</div>
-          </section>
-
-          <section className="reservePanel">
-            <div><span className="eyebrowLabel">OPTIONEEL</span><h2>Reserveer je vaste bedrag</h2><p>Houd vooraf genoeg ruimte opzij voor je maandelijkse abonnementen.</p></div>
-            <div className="reserveControls"><label className="toggleLabel"><input type="checkbox" checked={reserveEnabled} onChange={(event) => { setReserveEnabled(event.target.checked); syncReserve(event.target.checked, reserveAmount) }} /><span className="toggleTrack" /> Reserve actief</label><label className="reserveInput"><span>Maandelijks doel</span><input type="number" min="0" step="0.01" value={reserveAmount ?? ''} onChange={(event) => setReserveAmount(Number(event.target.value))} onBlur={() => syncReserve(reserveEnabled, reserveAmount)} /></label><strong>{reserveEnabled && reserveAmount !== null ? euro(reserveAmount - total) : 'Uitgeschakeld'} <small>beschikbaar</small></strong></div>
-          </section>
-
-          {showAdd && <div className="modalBackdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowAdd(false)}><form className="modalCard" onSubmit={addSubscription}><button type="button" className="modalClose" onClick={() => setShowAdd(false)}>×</button><span className="eyebrowLabel">NIEUWE HERKENNING</span><h2>Abonnement toevoegen</h2><p>Voeg een voorstel toe dat je later aan transacties kunt koppelen.</p><label>Naam<input required value={newSubscription.name} onChange={(event) => setNewSubscription({ ...newSubscription, name: event.target.value })} placeholder="bv. Videoland" /></label><label>Categorie<select value={newSubscription.category} onChange={(event) => setNewSubscription({ ...newSubscription, category: event.target.value })}><option>Streaming</option><option>Muziek</option><option>Software</option><option>Sport</option></select></label><div className="formGrid"><label>Bedrag<input required type="number" min="0.01" step="0.01" value={newSubscription.amount} onChange={(event) => setNewSubscription({ ...newSubscription, amount: event.target.value })} /></label><label>Volgende datum<input type="text" value={newSubscription.date} onChange={(event) => setNewSubscription({ ...newSubscription, date: event.target.value })} /></label></div><button className="primaryButton" type="submit">Opslaan</button></form></div>}
-          {showCompare && <div className="modalBackdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowCompare(false)}><div className="modalCard"><button type="button" className="modalClose" onClick={() => setShowCompare(false)}>×</button><span className="eyebrowLabel">STREAMING</span><h2>Vergelijk je abonnementen</h2>{streaming.map((item) => <div className="compareRow" key={item.id}><strong>{item.name}</strong><span>{euro(item.amount)} per maand</span></div>)}<div className="compareTotal"><span>Samen per maand</span><strong>{euro(streaming.reduce((sum, item) => sum + item.amount, 0))}</strong></div></div></div>}
+          {showCompare && (
+            <div className="modalBackdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowCompare(false)}>
+              <div className="modalCard">
+                <button type="button" className="modalClose" aria-label="Sluiten" onClick={() => setShowCompare(false)}>×</button>
+                <h2>Vergelijk je {overlap?.category.toLowerCase()}diensten</h2>
+                <p>Je betaalt momenteel voor {overlapItems.length} diensten in dezelfde categorie.</p>
+                <div className="compareList">
+                  {overlapItems.map((item) => (
+                    <div className="compareRow" key={item.id}>
+                      <span className={`subAvatar tone-${categoryTone(item.category)}`}>{item.name.slice(0, 1)}</span>
+                      <div><strong>{item.name}</strong><span>Volgende afschrijving {shortDate(item.nextDate)}</span></div>
+                      <div className="compareAmount"><strong>{euro(item.amount)}</strong><span>{euro(item.amount * 12)} / jaar</span></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="compareTotal">
+                  <span>Samen per maand</span>
+                  <strong>{euro(overlapItems.reduce((sum, item) => sum + item.amount, 0))}</strong>
+                </div>
+                <div className="compareSaving">
+                  <SvgIcon name="spark" />
+                  <span>Zeg je de goedkoopste op, dan bespaar je <strong>{euro(overlapSaving * 12)}</strong> per jaar.</span>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
