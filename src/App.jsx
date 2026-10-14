@@ -78,15 +78,16 @@ function handleInternalNav(event, path) {
 
 function KbcLogo() {
   return (
-    <svg className="kbcLogo" viewBox="0 0 62 22" role="img" aria-label="KBC">
+    <svg className="kbcLogo" viewBox="0 0 62 28" role="img" aria-label="KBC">
+      <rect x="0" y="0" width="28" height="4" rx="2" fill="#00aeef" />
       <text
         x="0"
-        y="18"
+        y="25"
         fill="currentColor"
         fontFamily="'Source Sans 3', 'Segoe UI', sans-serif"
         fontWeight="800"
-        fontSize="20"
-        letterSpacing="-0.6"
+        fontSize="22"
+        letterSpacing="-0.4"
       >
         KBC
       </text>
@@ -332,7 +333,7 @@ function SubscriptionManagerPage() {
       name: newSubscription.name.trim(),
       amount: Number(newSubscription.amount),
       confidence: 76,
-      color: '#0057b8',
+      color: '#003665',
       reason: 'Handmatig toegevoegd voor controle',
     }])
     setNewSubscription({ name: '', category: 'Streaming', amount: '9.99', date: '01/11/2026' })
@@ -342,9 +343,8 @@ function SubscriptionManagerPage() {
   return (
     <div className="shell">
       <div className="appFrame">
-        <KbcHeader />
-
-        <main className="kbcMain subscriptionMain">
+        <div className="topBand">
+          <KbcHeader />
           <section className="subscriptionHero">
             <a className="backText" href="/" onClick={(event) => handleInternalNav(event, '/')}>
               <SvgIcon name="chevron" />
@@ -352,8 +352,11 @@ function SubscriptionManagerPage() {
             </a>
             <h1 className="sectionTitle">Subscriptie Manager</h1>
             <p>Je terugkerende betalingen, automatisch herkend en overzichtelijk bij elkaar.</p>
-            <span className="aiStatus"><span /> {backendStatus === 'live' ? 'Backend verbonden' : backendStatus === 'loading' ? 'Backendgegevens laden…' : 'Backend niet bereikbaar'}</span>
+            <span className={`aiStatus ${backendStatus}`}><span /> {backendStatus === 'live' ? 'Backend verbonden' : backendStatus === 'loading' ? 'Backendgegevens laden…' : 'Backend niet bereikbaar'}</span>
           </section>
+        </div>
+
+        <main className="kbcMain subscriptionMain">
 
           <section className="subscriptionMetrics" aria-label="Samenvatting abonnementen">
             <article><span>Vaste kosten per maand</span><strong>{euro(total)}</strong></article>
@@ -444,7 +447,13 @@ function App() {
   return (
     <div className="shell">
       <div className="appFrame">
-        <KbcHeader />
+        <div className="topBand">
+          <KbcHeader />
+          <section className="welcome">
+            <span>Goeiedag,</span>
+            <h1>John Doe</h1>
+          </section>
+        </div>
 
         <main className="kbcMain">
           <section className="accountsRail" aria-label="Rekeningen">
@@ -459,6 +468,7 @@ function App() {
                   </button>
                 </div>
                 <div className="accountCardBody">
+                  <span className="accountLabel">{account.label}</span>
                   <span className="accountName">{account.name}</span>
                   <strong className="accountBalance">{account.balance}</strong>
                 </div>
