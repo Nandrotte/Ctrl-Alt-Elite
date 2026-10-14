@@ -882,8 +882,13 @@ a {
   display: grid;
   place-items: center;
   border-radius: 50%;
+  background: var(--kbc-navy);
   color: #fff;
   font-weight: 700;
+}
+
+.subscriptionItem:nth-child(even) .subscriptionBadge {
+  background: var(--kbc-blue);
 }
 
 .subscriptionInfo,
@@ -994,8 +999,13 @@ a {
   background: var(--kbc-cyan);
 }
 
-.chartColumn:nth-child(3n + 5) > i {
+/* Same color order as .chartLegend (columns are the only divs in the plot) */
+.chartColumn:nth-of-type(2n) > i {
   background: var(--kbc-navy);
+}
+
+.chartColumn:nth-of-type(3n) > i {
+  background: var(--kbc-teal);
 }
 
 .chartColumn > span {
